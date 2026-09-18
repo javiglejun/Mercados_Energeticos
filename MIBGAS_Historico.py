@@ -34,18 +34,18 @@ COLUMNAS_SELECCIONADAS = [
     "Area",
     "First Day Delivery",
     "Last Day Delivery",
-    "Reference Price\n[EUR/MWh]",
-    "Auction Price\n[EUR/MWh]",
-    "Last Price\n[EUR/MWh]",
-    "Bid\n[EUR/MWh]",
-    "Ask\n[EUR/MWh]",
+    "Reference Price [EUR/MWh]",
+    "Auction Price [EUR/MWh]",
+    "Last Price [EUR/MWh]",
+    "Bid [EUR/MWh]",
+    "Ask [EUR/MWh]",
     "Source",
-    "Maximum Price\n[EUR/MWh]",
-    "Minimum Price\n[EUR/MWh]",
-    "Price difference between purchases and sales\n[%]",
-    "Auction Volume Traded\n[MWh]",
+    "Maximum Price [EUR/MWh]",
+    "Minimum Price [EUR/MWh]",
+    "Price difference between purchases and sales [%]",
+    "Auction Volume Traded[MWh]",
     "OTC Volume Registered [MWh]",
-    "Volume Traded\n[MWh]",
+    "Volume Traded [MWh]",
 ]
 
 
@@ -57,17 +57,17 @@ COLUMNAS_FECHA = [
 
 
 COLUMNAS_NUMERICAS = [
-    "Reference Price\n[EUR/MWh]",
-    "Auction Price\n[EUR/MWh]",
-    "Last Price\n[EUR/MWh]",
-    "Bid\n[EUR/MWh]",
-    "Ask\n[EUR/MWh]",
-    "Maximum Price\n[EUR/MWh]",
-    "Minimum Price\n[EUR/MWh]",
-    "Price difference between purchases and sales\n[%]",
-    "Auction Volume Traded\n[MWh]",
+    "Reference Price [EUR/MWh]",
+    "Auction Price [EUR/MWh]",
+    "Last Price [EUR/MWh]",
+    "Bid [EUR/MWh]",
+    "Ask [EUR/MWh]",
+    "Maximum Price [EUR/MWh]",
+    "Minimum Price [EUR/MWh]",
+    "Price difference between purchases and sales [%]",
+    "Auction Volume Traded[MWh]",
     "OTC Volume Registered [MWh]",
-    "Volume Traded\n[MWh]",
+    "Volume Traded [MWh]",
 ]
 
 
@@ -113,11 +113,22 @@ def limpiar_datos(contenido_excel):
         engine="openpyxl",
     )
 
-    # Normalizar los encabezados sin eliminar los saltos de linea.
+    # Normalizar los encabezados del Excel.
     datos.columns = [
-        str(columna).strip()
+        str(columna)
+        .replace("\n", " ")
+        .replace("\r", " ")
+        .replace("\xae", "")
+        .replace("®", "")
+        .strip()
         for columna in datos.columns
     ]
+
+# Eliminar espacios duplicados.
+datos.columns = [
+    " ".join(columna.split())
+    for columna in datos.columns
+]
 
     columnas_no_encontradas = [
         columna
