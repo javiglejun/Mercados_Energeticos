@@ -1,0 +1,49 @@
+name: Actualizar datos de MIBGAS
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: "00 07 * * *"
+
+permissions:
+  contents: write
+*jobs:
+  actualizar-mibgas:
+    run*-on: ubuntu-latest
+
+    steps:
+   *  - name: Descargar repositorio
+  *     uses: actions/checkout@v4
+
+  *   - name: Configurar Python
+     *  uses: actions/setup-python@v5
+  *     with:
+          python-versio*: "3.12"
+
+      - name: Instalar d*pendencias
+        run: |
+        * python -m pip install --upgrade p*p
+          pip install -r require*ents.txt
+
+      - name: Ejecutar a*tualizacion de MIBGAS
+        run:*|
+          python scripts/MIBGAS_*istorico.py
+
+      - name: Comprob*r cambios
+        id: cambios
+    *   run: |
+          if git diff --*uiet; then
+            echo "hay_c*mbios=false" >> "$GITHUB_OUTPUT"
+ *        else
+            echo "hay*cambios=true" >> "$GITHUB_OUTPUT"
+*         fi
+
+      - name: Guardar*datos actualizados
+        if: ste*s.cambios.outputs.hay_cambios == '*rue'
+        run: |
+          git *onfig user.name "github-actions[bot]"
+          git config user.email*"41898282+github-actions[bot]@user*.noreply.github.com"
+          git*add data/
+          git commit -m *Actualizacion diaria MIBGAS"
+     *    git push
