@@ -8,42 +8,43 @@ on:
 
 permissions:
   contents: write
-*jobs:
+
+jobs:
   actualizar-mibgas:
-    run*-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
     steps:
-   *  - name: Descargar repositorio
-  *     uses: actions/checkout@v4
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
 
-  *   - name: Configurar Python
-     *  uses: actions/setup-python@v5
-  *     with:
-          python-versio*: "3.12"
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Instalar d*pendencias
+      - name: Instalar dependencias
         run: |
-        * python -m pip install --upgrade p*p
-          pip install -r require*ents.txt
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Ejecutar a*tualizacion de MIBGAS
-        run:*|
-          python scripts/MIBGAS_*istorico.py
+      - name: Ejecutar actualizacion de MIBGAS
+        run: |
+          python MIBGAS_Historico.py
 
-      - name: Comprob*r cambios
+      - name: Comprobar cambios
         id: cambios
-    *   run: |
-          if git diff --*uiet; then
-            echo "hay_c*mbios=false" >> "$GITHUB_OUTPUT"
- *        else
-            echo "hay*cambios=true" >> "$GITHUB_OUTPUT"
-*         fi
-
-      - name: Guardar*datos actualizados
-        if: ste*s.cambios.outputs.hay_cambios == '*rue'
         run: |
-          git *onfig user.name "github-actions[bot]"
-          git config user.email*"41898282+github-actions[bot]@user*.noreply.github.com"
-          git*add data/
-          git commit -m *Actualizacion diaria MIBGAS"
-     *    git push
+          if git diff --quiet && [ -z "$(git status --porcelain)" ]; then
+            echo "hay_cambios=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "hay_cambios=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Guardar datos actualizados
+        if: steps.cambios.outputs.hay_cambios == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git commit -m "Actualizacion diaria MIBGAS"
+          git push
