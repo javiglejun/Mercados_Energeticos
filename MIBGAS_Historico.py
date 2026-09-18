@@ -20,15 +20,15 @@ URL_MIBGAS = (
 
 NOMBRE_HOJA = "Trading Data PVB&VTP"
 
-CARPETA_DATOS = Path("data")
+# La carpeta base será siempre aquella donde está este script.
+CARPETA_REPOSITORIO = Path(__file__).resolve().parent
+
+CARPETA_DATOS = CARPETA_REPOSITORIO / "data"
 
 FICHERO_SALIDA = (
     CARPETA_DATOS / f"MIBGAS_{ANIO_ACTUAL}.csv"
 )
 
-
-# Nombres limpios que asignaremos a las columnas A:R.
-# No se utilizan los encabezados originales del Excel.
 
 NOMBRES_COLUMNAS = [
     "Trading day",
@@ -75,38 +75,23 @@ COLUMNAS_NUMERICAS = [
 
 
 # =========================================================
-# DESCARGA DEL EXCEL
+# DESCARGA
 # =========================================================
 
-def descargar_excel(url):
-    """
-    Descarga el fichero Excel anual publicado por MIBGAS.
-    """
-
+def descargar_excel():
     print("=" * 60)
-    print("DESCARGA DEL FICHERO MIBGAS")
+    print(f"ACTUALIZACION DE MIBGAS {ANIO_ACTUAL}")
     print("=" * 60)
-    print(f"URL: {url}")
+    print(f"Descargando: {URL_MIBGAS}")
 
-    encabezados = {
-        "User-Agent": (
-            "Mozilla/5.0 "
-            "(X11; Linux x86_64) "
-            "AppleWebKit/537.36 "
-            "(KHTML, like Gecko) "
-            "Chrome/120.0 Safari/537.36"
-        ),
-        "Accept": (
-            "application/vnd.openxmlformats-officedocument."
-            "spreadsheetml.sheet,"
-            "application/vnd.ms-excel,"
-            "*/*"
-        ),
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "*/*",
     }
 
     respuesta = requests.get(
-        url,
-        headers=encabezados,
+        URL_MIBGAS,
+        headers=headers,
         timeout=180,
     )
 
@@ -114,19 +99,12 @@ def descargar_excel(url):
 
     if not respuesta.content:
         raise ValueError(
-            "El fichero descargado esta vacio."
+            "El fichero descargado está vacío."
         )
 
-    # Un fichero XLSX es internamente un fichero ZIP y comienza por PK.
     if not respuesta.content.startswith(b"PK"):
-        tipo_contenido = respuesta.headers.get(
-            "Content-Type",
-            "desconocido",
-        )
-
         raise ValueError(
-            "La descarga no parece ser un fichero XLSX valido. "
-            f"Content-Type recibido: {tipo_contenido}"
+            "El contenido descargado no parece un fichero XLSX válido."
         )
 
     print(
@@ -138,25 +116,13 @@ def descargar_excel(url):
 
 
 # =========================================================
-# LECTURA Y LIMPIEZA
+# TRANSFORMACION
 # =========================================================
 
-def limpiar_datos(contenido_excel):
-    """
-    Lee las columnas A:R de la hoja de MIBGAS.
-
-    Las columnas se leen por posicion y posteriormente se les
-    asignan nombres controlados. De esta manera, el script no
-    depende de saltos de linea, simbolos especiales o caracteres
-    ocultos presentes en los encabezados originales.
-    """
-
+def transformar_datos(contenido_excel):
     print()
-    print("=" * 60)
-    print("LECTURA Y LIMPIEZA DE LOS DATOS")
-    print("=" * 60)
-    print(f"Hoja seleccionada: {NOMBRE_HOJA}")
-    print("Columnas seleccionadas: A:R")
+    print("Leyendo hoja:", NOMBRE_HOJA)
+    print("Leyendo las columnas A:R por posición.")
 
     datos = pd.read_excel(
         contenido_excel,
@@ -166,50 +132,36 @@ def limpiar_datos(contenido_excel):
         engine="openpyxl",
     )
 
-    print(
-        f"Dimensiones iniciales: "
-        f"{datos.shape,} filas y "
-        f"{datos.shape[1]} columnas"
-    )
+    print(f"Filas leídas inicialmente: {len(datos):,}")
+    print(f"Columnas leídas: {datos.shape[1]}")
 
-    # Comprobar que efectivamente se han obtenido 18 columnas.
-    if datos.shape[1] != len(NOMBRES_COLUMNAS):
+    if datos.shape[1] != 18:
         raise ValueError(
-            "Numero inesperado de columnas. "
-            f"Se esperaban {len(NOMBRES_COLUMNAS)} columnas "
-            f"y se han encontrado {datos.shape[1]}."
+            "Se esperaban 18 columnas entre A y R, "
+            f"pero se han leído {datos.shape[1]}."
         )
 
-    # Reemplazar todos los encabezados originales.
+    # Sustituir los encabezados problemáticos de MIBGAS.
     datos.columns = NOMBRES_COLUMNAS
 
-    print("Encabezados originales sustituidos correctamente.")
-
-    # Eliminar filas completamente vacias.
-    filas_antes = len(datos)
-
+    # Eliminar filas completamente vacías.
     datos = datos.dropna(how="all")
 
-    print(
-        "Filas completamente vacias eliminadas: "
-        f"{filas_antes - len(datos):,}"
-    )
-
-    # Convertir las columnas de fecha.
+    # Convertir fechas.
     for columna in COLUMNAS_FECHA:
         datos[columna] = pd.to_datetime(
             datos[columna],
             errors="coerce",
         )
 
-    # Convertir las columnas numericas.
+    # Convertir precios y volúmenes.
     for columna in COLUMNAS_NUMERICAS:
         datos[columna] = pd.to_numeric(
             datos[columna],
             errors="coerce",
         )
 
-    # Convertir las columnas de texto.
+    # Limpiar campos de texto sin convertir valores vacíos en texto.
     columnas_texto = [
         "Product",
         "Place of delivery",
@@ -218,31 +170,21 @@ def limpiar_datos(contenido_excel):
     ]
 
     for columna in columnas_texto:
-        datos[columna] = datos[columna].astype("string").str.strip()
+        datos[columna] = (
+            datos[columna]
+            .astype("string")
+            .str.strip()
+        )
 
-    # Eliminar filas sin fecha de negociacion valida.
-    filas_antes = len(datos)
-
+    # Mantener únicamente registros con fecha válida.
     datos = datos.dropna(
         subset=["Trading day"]
     )
 
-    print(
-        "Filas sin Trading day valido eliminadas: "
-        f"{filas_antes - len(datos):,}"
-    )
-
-    # Eliminar duplicados completos.
-    filas_antes = len(datos)
-
+    # Eliminar duplicados.
     datos = datos.drop_duplicates()
 
-    print(
-        "Filas duplicadas eliminadas: "
-        f"{filas_antes - len(datos):,}"
-    )
-
-    # Ordenar los registros.
+    # Ordenar.
     datos = datos.sort_values(
         by=[
             "Trading day",
@@ -258,48 +200,7 @@ def limpiar_datos(contenido_excel):
 
     if datos.empty:
         raise ValueError(
-            "El resultado esta vacio despues de limpiar los datos."
+            "No quedan registros después de transformar los datos."
         )
 
-    fecha_minima = datos["Trading day"].min()
-    fecha_maxima = datos["Trading day"].max()
-
-    print()
-    print("Lectura completada correctamente.")
-    print(f"Registros validos: {len(datos):,}")
-    print(
-        "Periodo disponible: "
-        f"{fecha_minima.strftime('%Y-%m-%d')} a "
-        f"{fecha_maxima.strftime('%Y-%m-%d')}"
-    )
-
-    print()
-    print("Columnas finales:")
-
-    for numero, columna in enumerate(
-        datos.columns,
-        start=1,
-    ):
-        print(f"{numero:02d}. {columna}")
-
-    return datos
-
-
-# =========================================================
-# VALIDACION
-# =========================================================
-
-def validar_datos(datos):
-    """
-    Realiza comprobaciones basicas antes de guardar el CSV.
-    """
-
-    print()
-    print("=" * 60)
-    print("VALIDACION DEL RESULTADO")
-    print("=" * 60)
-
-    if datos.empty:
-        raise ValueError(
-            "No hay datos para guardar.")
-      
+    print(f"Registros )
