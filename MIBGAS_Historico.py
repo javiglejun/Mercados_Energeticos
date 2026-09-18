@@ -43,7 +43,7 @@ COLUMNAS_SELECCIONADAS = [
     "Maximum Price\n[EUR/MWh]",
     "Minimum Price\n[EUR/MWh]",
     "Price difference between purchases and sales\n[%]",
-    "Auction Volume Traded®[MWh]",
+    "Auction Volume Traded\n[MWh]",
     "OTC Volume Registered [MWh]",
     "Volume Traded\n[MWh]",
 ]
@@ -65,7 +65,7 @@ COLUMNAS_NUMERICAS = [
     "Maximum Price\n[EUR/MWh]",
     "Minimum Price\n[EUR/MWh]",
     "Price difference between purchases and sales\n[%]",
-    "Auction Volume Traded®[MWh]",
+    "Auction Volume Traded\n[MWh]",
     "OTC Volume Registered [MWh]",
     "Volume Traded\n[MWh]",
 ]
